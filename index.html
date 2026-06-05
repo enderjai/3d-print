@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>3D Print Manager Pro - Multi-usuario y Clientes</title>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        :root{
+            --c1:#0F172A;--c2:#1E3A5F;--c3:#2563EB;--c4:#3B82F6;--c5:#93C5FD;
+            --bg:#F8FAFC;--card:#fff;--border:#E2E8F0;--muted:#64748B;
+            --success:#059669;--warn:#D97706;--danger:#DC2626;--purple:#8B5CF6;
+        }
+        body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);padding:16px}
+        .app{max-width:1400px;margin:0 auto}
+        /* Login Overlay */
+        .login-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:2000;display:flex;justify-content:center;align-items:center}
+        .login-card{background:var(--card);border-radius:24px;padding:32px;max-width:420px;width:90%;box-shadow:0 20px 35px -8px rgba(0,0,0,0.3)}
+        .login-card h2{color:var(--c2);margin-bottom:20px}
+        .login-card input{width:100%;margin-bottom:16px}
+        .role-selector{display:flex;gap:12px;margin-bottom:16px}
+        .role-btn{flex:1;padding:10px;border-radius:12px;border:1px solid var(--border);background:var(--bg);cursor:pointer;text-align:center}
+        .role-btn.active{background:var(--c3);color:white;border-color:var(--c3)}
+        .error-msg{color:var(--danger);font-size:12px;margin-top:-8px;margin-bottom:12px}
+        .tabs{display:flex;gap:4px;background:var(--bg);border-radius:12px;padding:4px;margin-bottom:20px;border:0.5px solid var(--border);flex-wrap:wrap}
+        .tab{flex:1;min-width:90px;padding:10px 8px;text-align:center;font-size:12px;font-weight:500;border-radius:8px;cursor:pointer;color:var(--muted);transition:all .15s;border:none;background:none}
+        .tab.active{background:#fff;color:var(--c2);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+        .section{display:none}.section.active{display:block}
+        .dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:20px}
+        .stat-card{background:var(--card);border-radius:16px;padding:20px;border:0.5px solid var(--border);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+        .stat-value{font-size:28px;font-weight:700;color:var(--c2);margin-top:8px}
+        .stat-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+        .card{background:var(--card);border:0.5px solid var(--border);border-radius:16px;padding:20px;margin-bottom:20px}
+        .card-title{font-size:16px;font-weight:600;color:var(--c2);margin-bottom:16px;display:flex;align-items:center;gap:8px;border-bottom:1.5px solid var(--border);padding-bottom:12px;flex-wrap:wrap}
+        .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+        .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+        .row4{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+        label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px;font-weight:500}
+        input,select,textarea{width:100%;padding:10px 12px;border:0.5px solid var(--border);border-radius:10px;font-size:14px;background:var(--bg);outline:none}
+        input:focus,select:focus{border-color:var(--c3);background:#fff;box-shadow:0 0 0 2px rgba(37,99,235,.1)}
+        .btn{padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);background:#fff;transition:all .2s}
+        .btn:hover{background:var(--bg);transform:translateY(-1px)}
+        .btn.primary{background:var(--c2);color:#fff;border-color:var(--c2)}
+        .btn.success{background:var(--success);color:#fff}
+        .btn.danger{background:var(--danger);color:#fff}
+        .btn.small{padding:6px 12px;font-size:12px}
+        .btn-row{display:flex;gap:12px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+        .fil-row,.warehouse-row{display:grid;grid-template-columns:140px 100px 100px 80px 28px;gap:8px;align-items:center;margin-bottom:8px}
+        .del-btn{background:none;border:none;color:#CBD5E1;cursor:pointer;font-size:20px}
+        .del-btn:hover{color:var(--danger)}
+        .badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500}
+        .badge.blue{background:#DBEAFE;color:#1D4ED8}
+        .badge.green{background:#D1FAE5;color:#065F46}
+        .badge.red{background:#FEE2E2;color:#991B1B}
+        .inventory-table{width:100%;border-collapse:collapse;font-size:13px}
+        .inventory-table th{background:var(--bg);padding:12px;text-align:left;border-bottom:1.5px solid var(--border)}
+        .inventory-table td{padding:12px;border-bottom:0.5px solid var(--border)}
+        .breakdown-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--border);font-size:14px}
+        .breakdown-row.total{font-weight:700;color:var(--c2);border-top:2px solid var(--c4);margin-top:8px;padding-top:14px}
+        .result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+        .result-card{background:var(--bg);border-radius:12px;padding:14px;border:0.5px solid var(--border)}
+        .client-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px}
+        @media (max-width:768px){.row2,.row3{grid-template-columns:1fr}}
+        .admin-badge{background:var(--purple);color:white;font-size:10px;border-radius:20px;padding:2px 8px;margin-left:8px}
+    </style>
+</head>
+<body>
+
+<div class="app" id="app" style="display:none">
+    <!-- BARRA SUPERIOR CON USUARIO -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+        <h2 style="color:var(--c2)">🖨️ 3D Print Manager Pro</h2>
+        <div style="display:flex;gap:12px;align-items:center">
+            <span id="currentUserBadge" class="badge blue"></span>
+            <button class="btn small" onclick="logout()">🚪 Cerrar sesión</button>
+        </div>
+    </div>
+
+    <div class="tabs" id="tabsContainer"></div>
+
+    <!-- DASHBOARD ADMIN / CLIENTE -->
+    <div id="tab-dashboard" class="section active">
+        <div class="dashboard-grid" id="dashboardStats"></div>
+        <div class="row2">
+            <div class="card">
+                <div class="card-title">🏆 Top productos más comprados</div>
+                <div id="topProducts"></div>
+            </div>
+            <div class="card">
+                <div class="card-title">⚠️ Stock bajo (menos de 5)</div>
+                <div id="lowStockAlert"></div>
+            </div>
+        </div>
+        <div class="row2">
+            <div class="card">
+                <div class="card-title">🏪 Stock por almacén</div>
+                <div id="warehouseSummary"></div>
+            </div>
+            <div class="card">
+                <div class="card-title">📊 Ventas por periodo (últimos 30 días)</div>
+                <div id="salesSummary"></div>
+            </div>
+        </div>
+        <!-- Panel de estadísticas avanzadas de cliente (solo admin ve esto, pero incluye métricas completas) -->
+        <div id="clientAnalyticsPanel" class="card" style="display:none">
+            <div class="card-title">📊 ESTADÍSTICAS AVANZADAS DEL CLIENTE 👤 <span id="selectedClientName"></span></div>
+            <div id="clientDetailedStats" class="client-stats-grid"></div>
+            <div id="clientTopProducts"></div>
+            <div id="clientMonthlySales"></div>
+        </div>
+        <!-- Selector de cliente (solo admin) -->
+        <div id="clientSelectorDiv" class="card" style="display:none">
+            <div class="card-title">🔍 Seleccionar cliente para ver análisis detallado</div>
+            <select id="adminClientSelect" onchange="loadClientAnalytics()"></select>
+        </div>
+    </div>
+
+    <!-- CALCULADORA -->
+    <div id="tab-calc" class="section">
+        <div class="card"><div class="card-title">🎨 Trabajo de impresión</div>
+            <div class="row2"><div><label>Nombre</label><input id="jobName" placeholder="Ej: Soporte"></div>
+            <div><label>Impresora</label><select id="printerSel" onchange="calc()"><option value="x1c">X1 Carbon — $17,000</option><option value="a1combo">A1 Combo — $12,000</option><option value="p1scombo">P1S Combo — $15,000</option><option value="p1p">P1P — $8,000</option><option value="ams2pro">AMS 2 Pro — $10,000</option></select></div></div>
+            <div class="row3"><div><label>Tiempo (h)</label><input id="hours" type="number" value="3.5" oninput="calc()"></div><div><label>Fallas (%)</label><input id="failPct" type="number" value="8" oninput="calc()"></div><div><label>Piezas</label><input id="pieces" type="number" value="1" oninput="calc()"></div></div>
+        </div>
+        <div class="card"><div class="card-title">🧵 Materiales <button class="btn small" onclick="addFilament()">+ Agregar</button></div><div id="filaments"></div></div>
+        <div class="card"><div class="card-title">💰 Precio</div><div class="row2"><div><label>Margen (%)</label><input id="marginNum" type="number" value="60" oninput="calc()"></div><div><label>Mano de obra</label><input id="labor" type="number" value="50" oninput="calc()"></div></div></div>
+        <div class="card"><div class="card-title">📊 Desglose</div><div id="breakdown"></div></div>
+        <div class="result-grid" id="resultCards"></div>
+        <div class="btn-row"><button class="btn" onclick="saveSKU()">💾 Guardar SKU</button><button class="btn primary" onclick="addToInventory()">📦 Añadir inventario</button></div>
+    </div>
+
+    <div id="tab-inventory" class="section"><div class="card"><div class="card-title">📦 Inventario</div><div id="inventoryList"></div></div></div>
+    <div id="tab-warehouses" class="section"><div class="card"><div class="card-title">🏪 Almacenes</div><div id="warehousesList"></div></div><div class="card"><div class="card-title">Distribuir</div><div class="row2"><div><label>SKU</label><select id="distProductSku"></select></div><div><label>Almacén</label><select id="distWarehouse"></select></div><div><label>Cantidad</label><input id="distQuantity" type="number"></div><div><button class="btn primary" onclick="distributeToWarehouse()">Distribuir</button></div></div></div></div>
+    <div id="tab-sales" class="section"><div class="card"><div class="card-title">💰 Registrar venta</div><div class="row2"><div><label>SKU</label><select id="saleProductSku" onchange="updateSalePrice()"></select></div><div><label>Cantidad</label><input id="saleQuantity" type="number" value="1" onchange="updateSaleTotal()"></div><div><label>Precio unitario</label><input id="saleUnitPrice" type="number" onchange="updateSaleTotal()"></div><div><label>Total</label><input id="saleTotal" readonly style="background:#EFF6FF"></div><div><label>Almacén</label><select id="saleWarehouse"></select></div></div><div class="btn-row"><button class="btn success" onclick="registerSale()">✅ Vender</button></div></div><div class="card"><div class="card-title">Historial</div><div id="salesHistory"></div></div></div>
+    <div id="tab-skus" class="section"><div class="card"><div class="card-title">SKUs guardados</div><div id="skuList"></div></div></div>
+    <div id="tab-maint" class="section"><div class="card"><div class="card-title">Mantenimiento</div><div id="maintHourCost"></div><div id="maintList"></div><div id="maintBudget"></div></div></div>
+    <div id="tab-config" class="section"><div class="card"><div class="card-title">⚙️ Configuración</div><div class="row2"><div><label>Tarifa CFE</label><input id="cfgElec" type="number" value="2.50" oninput="calc()"></div><div><label>Consumo (kW)</label><input id="cfgKw" type="number" value="0.35" oninput="calc()"></div></div><div class="row4"><div><label>A1 horas</label><input id="hA1" value="1200"></div><div><label>P1S horas</label><input id="hP1S" value="1500"></div><div><label>P1P horas</label><input id="hP1P" value="1200"></div><div><label>X1C horas</label><input id="hX1C" value="1800"></div><div><label>AMS horas</label><input id="hAMS" value="800"></div></div><div class="row4"><div><label>Precio A1</label><input id="pA1" value="12000"></div><div><label>Precio P1S</label><input id="pP1S" value="15000"></div><div><label>Precio P1P</label><input id="pP1P" value="8000"></div><div><label>Precio X1C</label><input id="pX1C" value="17000"></div><div><label>Precio AMS</label><input id="pAMS" value="10000"></div></div><div class="btn-row"><button class="btn danger" onclick="resetAllData()">Resetear todo</button></div></div></div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div id="loginOverlay" class="login-overlay">
+    <div class="login-card">
+        <h2>🔐 Acceso 3D Print Pro</h2>
+        <div class="role-selector">
+            <div id="roleAdmin" class="role-btn active" onclick="setRole('admin')">👑 Administrador</div>
+            <div id="roleClient" class="role-btn" onclick="setRole('client')">🧑 Cliente</div>
+        </div>
+        <input type="text" id="loginUsername" placeholder="Usuario / Email" value="">
+        <input type="password" id="loginPassword" placeholder="Contraseña" value="">
+        <div id="loginError" class="error-msg"></div>
+        <button class="btn primary" style="width:100%" onclick="attemptLogin()">Ingresar</button>
+        <div style="margin-top:16px;font-size:12px;color:var(--muted);text-align:center">
+            ⚡ Admin: admin / admin123<br>
+            🧑 Clientes: juan / 123 , ana / 123 , carlos / 123
+        </div>
+    </div>
+</div>
+
+<script>
+// ==================== DATA MODEL ====================
+let users = [
+    { id: 'u1', username: 'admin', password: 'admin123', role: 'admin', name: 'Administrador', email: 'admin@3dprint.com', createdAt: '2024-01-01' },
+    { id: 'u2', username: 'juan', password: '123', role: 'client', name: 'Juan Pérez', email: 'juan@cliente.com', phone: '5551234567' },
+    { id: 'u3', username: 'ana', password: '123', role: 'client', name: 'Ana García', email: 'ana@cliente.com', phone: '5559876543' },
+    { id: 'u4', username: 'carlos', password: '123', role: 'client', name: 'Carlos López', email: 'carlos@cliente.com', phone: '5555555555' }
+];
+let currentUser = null;
+let skus = [], inventory = [], warehouses = [], warehouseStock = [], sales = [];
+let filamentRows = [];
+
+const FILAMENTS_DEF = [{name:'PLA',price:280},{name:'PETG',price:320},{name:'ABS',price:350},{name:'TPU',price:450},{name:'PLA-CF',price:580}];
+const MAINT_PARTS = [{name:'Nozzle',life:300,cost:80,cat:'Nozzle'},{name:'Placa PEI',life:750,cost:350,cat:'Cama'},{name:'Tubo PTFE',life:750,cost:60,cat:'Extrusor'}];
+const PRINTERS = { a1combo:{name:'A1 Combo',years:4}, p1scombo:{name:'P1S Combo',years:5}, p1p:{name:'P1P',years:4}, x1c:{name:'X1 Carbon',years:5}, ams2pro:{name:'AMS 2 Pro',years:5} };
+
+function loadStorage() {
+    if(localStorage.getItem('3dprint_users')) users = JSON.parse(localStorage.getItem('3dprint_users'));
+    if(localStorage.getItem('3dprint_skus')) skus = JSON.parse(localStorage.getItem('3dprint_skus'));
+    if(localStorage.getItem('3dprint_inventory')) inventory = JSON.parse(localStorage.getItem('3dprint_inventory'));
+    if(localStorage.getItem('3dprint_warehouses')) warehouses = JSON.parse(localStorage.getItem('3dprint_warehouses'));
+    if(localStorage.getItem('3dprint_warehouseStock')) warehouseStock = JSON.parse(localStorage.getItem('3dprint_warehouseStock'));
+    if(localStorage.getItem('3dprint_sales')) sales = JSON.parse(localStorage.getItem('3dprint_sales'));
+    if(!warehouses.length) warehouses = [{id:'wh1', name:'Almacén Principal', location:'CDMX'},{id:'wh2', name:'Punto Norte', location:'MTY'}];
+}
+function saveAll() { localStorage.setItem('3dprint_users',JSON.stringify(users)); localStorage.setItem('3dprint_skus',JSON.stringify(skus)); localStorage.setItem('3dprint_inventory',JSON.stringify(inventory)); localStorage.setItem('3dprint_warehouses',JSON.stringify(warehouses)); localStorage.setItem('3dprint_warehouseStock',JSON.stringify(warehouseStock)); localStorage.setItem('3dprint_sales',JSON.stringify(sales)); }
+
+// AUTH
+function setRole(role) { document.querySelectorAll('.role-btn').forEach(btn=>btn.classList.remove('active')); document.getElementById(`role${role==='admin'?'Admin':'Client'}`).classList.add('active'); window.selectedRole=role; }
+function attemptLogin() {
+    const user = document.getElementById('loginUsername').value.trim();
+    const pass = document.getElementById('loginPassword').value.trim();
+    const found = users.find(u=>u.username===user && u.password===pass);
+    if(!found){ document.getElementById('loginError').innerText='Usuario o contraseña incorrectos'; return; }
+    currentUser = found;
+    document.getElementById('loginOverlay').style.display='none';
+    document.getElementById('app').style.display='block';
+    initAppAfterLogin();
+}
+function logout() { currentUser=null; document.getElementById('loginOverlay').style.display='flex'; document.getElementById('app').style.display='none'; }
+function isAdmin() { return currentUser?.role === 'admin'; }
+
+function initAppAfterLogin() {
+    document.getElementById('currentUserBadge').innerHTML = `${isAdmin() ? '👑 Admin' : '🧑 Cliente'} ${currentUser.name}`;
+    renderTabs();
+    if(!filamentRows.length) addFilament('PLA',280,85);
+    calc(); renderSKUs(); renderInventory(); renderWarehouses(); updateWarehouseSelects(); updateDashboard(); renderMaint();
+    if(isAdmin()) { document.getElementById('clientSelectorDiv').style.display='block'; document.getElementById('clientAnalyticsPanel').style.display='block'; loadClientSelect(); loadClientAnalytics(); }
+    else { document.getElementById('clientSelectorDiv').style.display='none'; document.getElementById('clientAnalyticsPanel').style.display='none'; }
+}
+function renderTabs() {
+    const tabs = isAdmin() ? ['dashboard','calc','inventory','warehouses','sales','skus','maint','config'] : ['dashboard','calc','skus'];
+    const names = isAdmin() ? ['📊 Dashboard','🧮 Calcular','📦 Inventario','🏪 Almacén','💰 Ventas','🏷️ SKUs','🔧 Maint','⚙️ Config'] : ['📊 Mi Dashboard','🧮 Calcular','🏷️ Mis SKUs'];
+    const container = document.getElementById('tabsContainer');
+    container.innerHTML = '';
+    tabs.forEach((tab,i)=> { const btn = document.createElement('button'); btn.className='tab'; if(i===0)btn.classList.add('active'); btn.innerText=names[i]; btn.onclick=()=>showTab(tab); container.appendChild(btn); });
+    showTab('dashboard');
+}
+function showTab(t){ document.querySelectorAll('.tab').forEach((b,i)=>{b.classList.toggle('active',b.innerText.includes(t)|| (t==='dashboard'&&b.innerText.includes('Dashboard')))}); document.querySelectorAll('.section').forEach(s=>s.classList.remove('active')); document.getElementById('tab-'+t).classList.add('active'); if(t==='maint')renderMaint(); if(t==='skus')renderSKUs(); if(t==='inventory')renderInventory(); if(t==='warehouses')renderWarehouses(); if(t==='sales')renderSalesHistory(); if(t==='dashboard')updateDashboard(); if(t==='calc')calc(); }
+
+// CLIENT ANALYTICS (ADMIN)
+function loadClientSelect() { const select=document.getElementById('adminClientSelect'); select.innerHTML='<option value="">-- Seleccionar cliente --</option>'+users.filter(u=>u.role==='client').map(u=>`<option value="${u.id}">${u.name} (${u.username})</option>`).join(''); }
+function loadClientAnalytics(){ const clientId=document.getElementById('adminClientSelect').value; if(!clientId){document.getElementById('clientDetailedStats').innerHTML='';return;} const client=users.find(u=>u.id===clientId); if(!client)return; document.getElementById('selectedClientName').innerHTML=client.name; const clientSales=sales.filter(s=>s.clientId===clientId); const totalSpent=clientSales.reduce((a,b)=>a+b.total,0); const totalUnits=clientSales.reduce((a,b)=>a+b.quantity,0); const avgTicket=totalUnits>0?totalSpent/totalUnits:0; const uniqueProducts=[...new Set(clientSales.map(s=>s.sku))].length; const last30Days=clientSales.filter(s=>new Date(s.date)>new Date(Date.now()-30*86400000)).reduce((a,b)=>a+b.total,0); const monthly={}; clientSales.forEach(s=>{const m=new Date(s.date).toLocaleString('es',{month:'short',year:'numeric'}); monthly[m]=(monthly[m]||0)+s.total;}); const monthlyHTML=Object.entries(monthly).slice(-6).map(([m,t])=>`<div class="breakdown-row"><span>${m}</span><span>$${t.toFixed(2)}</span></div>`).join(''); const productSales={}; clientSales.forEach(s=>{productSales[s.sku]=(productSales[s.sku]||0)+s.quantity;}); const topProds=Object.entries(productSales).sort((a,b)=>b[1]-a[1]).slice(0,5); const topHTML=topProds.length?`<table class="inventory-table"><thead><tr><th>SKU</th><th>Cantidad comprada</th></tr></thead><tbody>${topProds.map(([sku,qty])=>`<tr><td>${sku}</td><td><strong>${qty}</strong></td></tr>`).join('')}</tbody></table>`:'<div>Sin compras</div>'; document.getElementById('clientDetailedStats').innerHTML=`<div class="stat-card"><div class="stat-label">💰 Gasto total</div><div class="stat-value">$${totalSpent.toFixed(2)}</div></div><div class="stat-card"><div class="stat-label">📦 Unidades compradas</div><div class="stat-value">${totalUnits}</div></div><div class="stat-card"><div class="stat-label">💵 Ticket promedio</div><div class="stat-value">$${avgTicket.toFixed(2)}</div></div><div class="stat-card"><div class="stat-label">📊 Productos distintos</div><div class="stat-value">${uniqueProducts}</div></div><div class="stat-card"><div class="stat-label">📅 Ventas últimos 30d</div><div class="stat-value">$${last30Days.toFixed(2)}</div></div><div class="stat-card"><div class="stat-label">🏆 Rentabilidad generada (ganancia bruta)</div><div class="stat-value">$${clientSales.reduce((a,s)=>{ const inv=inventory.find(i=>i.sku===s.sku); const profit=inv?(s.total-(inv.cost*s.quantity)):0; return a+profit;},0).toFixed(2)}</div></div>`; document.getElementById('clientTopProducts').innerHTML=`<div class="card-title">🏆 Top productos de ${client.name}</div>${topHTML}`; document.getElementById('clientMonthlySales').innerHTML=`<div class="card-title">📅 Evolución mensual (últimos 6 meses)</div>${monthlyHTML||'Sin datos'}`; }
+
+// CÁLCULOS + INVENTORY + VENTAS (integradas con clientId)
+function pv(id){return parseFloat(document.getElementById(id)?.value)||0}
+function fmt(n){return n.toFixed(2)}
+function getPrinterCostPerHour(pid){ const priceMap={a1combo:()=>pv('pA1'),p1scombo:()=>pv('pP1S'),p1p:()=>pv('pP1P'),x1c:()=>pv('pX1C'),ams2pro:()=>pv('pAMS')}; const hourMap={a1combo:()=>pv('hA1'),p1scombo:()=>pv('hP1S'),p1p:()=>pv('hP1P'),x1c:()=>pv('hX1C'),ams2pro:()=>pv('hAMS')}; const p=PRINTERS[pid]; const price=priceMap[pid](); const hrs=hourMap[pid](); const yearlyCost=price/p.years; return hrs>0?yearlyCost/hrs:0; }
+function getMaintCostPerHour(){ return MAINT_PARTS.reduce((a,p)=>a+(p.life>0?p.cost/p.life:0),0); }
+function addFilament(name='PLA',price=280,grams=85){ const id='fil_'+Date.now(); filamentRows.push(id); const div=document.createElement('div'); div.className='fil-row'; div.id=id; div.innerHTML=`<select onchange="this.nextElementSibling.value=this.options[this.selectedIndex].getAttribute('data-price')||this.value;calc()" data-price="${price}">${FILAMENTS_DEF.map(f=>`<option value="${f.price}" ${f.name===name?'selected':''}>${f.name}</option>`).join('')}</select><input type="number" value="${price}" oninput="calc()"><input type="number" value="${grams}" oninput="calc()"><div id="${id}_pct">—</div><button class="del-btn" onclick="removeFil('${id}')">✖</button>`; document.getElementById('filaments').appendChild(div); calc(); }
+function removeFil(id){ document.getElementById(id)?.remove(); filamentRows=filamentRows.filter(x=>x!==id); calc(); }
+function getFilaments(){ return filamentRows.map(id=>{ const el=document.getElementById(id); if(!el)return null; const inputs=el.querySelectorAll('input'); const sel=el.querySelector('select'); return{name:sel.options[sel.selectedIndex]?.text,price:parseFloat(inputs[0]?.value)||0,grams:parseFloat(inputs[1]?.value)||0}; }).filter(Boolean); }
+function calc(){ const pid=document.getElementById('printerSel').value; const hours=pv('hours'); const failPct=pv('failPct')/100; const pieces=Math.max(1,pv('pieces')); const margin=pv('marginNum')/100; const labor=pv('labor'); const elec=pv('cfgElec'); const kw=pv('cfgKw'); const fils=getFilaments(); const totalGrams=fils.reduce((a,f)=>a+f.grams,0); const matCost=fils.reduce((a,f)=>a+f.price*(f.grams/1000),0); const energyCost=kw*elec*hours; const deprCost=getPrinterCostPerHour(pid)*hours; const maintCost=getMaintCostPerHour()*hours; const subtotal=matCost+energyCost+deprCost+maintCost+labor; const failAdj=subtotal*failPct; const totalCost=subtotal+failAdj; const price=totalCost*(1+margin); const priceIVA=price*1.16; const pricePerPiece=priceIVA/pieces; const items=[{label:'Material',val:matCost},{label:'Energía',val:energyCost},{label:'Depreciación',val:deprCost},{label:'Mantenimiento',val:maintCost},{label:'Mano obra',val:labor},{label:`Fallas`,val:failAdj}]; document.getElementById('breakdown').innerHTML=items.map(it=>`<div class="breakdown-row"><span>${it.label}</span><span>$${fmt(it.val)}</span></div>`).join('')+`<div class="breakdown-row total"><span>Costo total</span><span>$${fmt(totalCost)}</span></div>`; document.getElementById('resultCards').innerHTML=`<div class="result-card"><div class="result-label">Costo prod.</div><div class="result-val">$${fmt(totalCost)}</div></div><div class="result-card success"><div class="result-label">Precio + IVA</div><div class="result-val">$${fmt(priceIVA)}</div></div><div class="result-card"><div class="result-label">Por pieza</div><div class="result-val">$${fmt(pricePerPiece)}</div></div><div class="result-card"><div class="result-label">Margen</div><div class="result-val">${((priceIVA-totalCost)/priceIVA*100).toFixed(1)}%</div></div>`; window._lastCalc={pid,hours,failPct,pieces,margin,labor,fils,matCost,totalCost,priceIVA,pricePerPiece,jobName:document.getElementById('jobName').value||'Sin nombre'}; }
+function genSKU(data){ const printerCode={a1combo:'A1C',p1scombo:'P1S',p1p:'P1P',x1c:'X1C',ams2pro:'AMS'}[data.pid]||'GEN'; const fil=data.fils[0]?.name.substring(0,3).toUpperCase()||'GEN'; const idx=String(Date.now()).slice(-6); return `3D-${printerCode}-${fil}-${idx}`; }
+function saveSKU(){ if(!window._lastCalc)return; const d=window._lastCalc; const sku={code:genSKU(d),name:d.jobName,printer:PRINTERS[d.pid].name,hours:d.hours,matCost:d.matCost,totalCost:d.totalCost,price:d.priceIVA,pieces:d.pieces,date:new Date().toLocaleDateString()}; skus.push(sku); saveAll(); renderSKUs(); alert(`SKU ${sku.code} guardado`); }
+function addToInventory(){ if(!window._lastCalc)return; const d=window._lastCalc; const skuCode=genSKU(d); const existing=inventory.find(i=>i.sku===skuCode); if(existing){ existing.quantity+=d.pieces; existing.price=d.priceIVA; existing.cost=d.totalCost; }else{ inventory.push({sku:skuCode, name:d.jobName, quantity:d.pieces, price:d.priceIVA, cost:d.totalCost, date:new Date().toISOString()}); } const mainWh=warehouses[0]; if(mainWh){ const stockItem=warehouseStock.find(ws=>ws.warehouseId===mainWh.id && ws.sku===skuCode); if(stockItem) stockItem.quantity+=d.pieces; else warehouseStock.push({warehouseId:mainWh.id, sku:skuCode, quantity:d.pieces}); } saveAll(); renderInventory(); updateDashboard(); alert(`${d.pieces} unidades añadidas SKU: ${skuCode}`); }
+function renderInventory(){ const el=document.getElementById('inventoryList'); if(!inventory.length){el.innerHTML='<div>Vacío</div>';return;} el.innerHTML=`<table class="inventory-table"><thead><tr><th>SKU</th><th>Producto</th><th>Cantidad</th><th>Precio venta</th></tr></thead><tbody>${inventory.map(i=>`<tr><td>${i.sku}</td><td>${i.name}</td><td>${i.quantity}</td><td>$${fmt(i.price)}</td></tr>`).join('')}</tbody></table>`; }
+function registerSale(){ const sku=document.getElementById('saleProductSku').value; const quantity=parseInt(document.getElementById('saleQuantity').value); const unitPrice=parseFloat(document.getElementById('saleUnitPrice').value); const whId=document.getElementById('saleWarehouse').value; if(!sku||!quantity||!unitPrice||!whId){alert('Complete');return;} const stockItem=warehouseStock.find(ws=>ws.warehouseId===whId && ws.sku===sku); if(!stockItem || stockItem.quantity<quantity){alert('Stock insuficiente');return;} stockItem.quantity-=quantity; const total=unitPrice*quantity; const sale={id:'sale_'+Date.now(), sku, quantity, unitPrice, total, warehouseId:whId, clientId:currentUser.id, date:new Date().toISOString()}; sales.push(sale); const invItem=inventory.find(i=>i.sku===sku); if(invItem) invItem.quantity-=quantity; saveAll(); renderSalesHistory(); updateDashboard(); updateWarehouseSelects(); renderInventory(); alert(`Venta registrada: $${fmt(total)}`); }
+function renderSalesHistory(){ const el=document.getElementById('salesHistory'); const userSales=isAdmin()?sales:sales.filter(s=>s.clientId===currentUser.id); if(!userSales.length){el.innerHTML='<div>Sin ventas</div>';return;} el.innerHTML=`<table class="inventory-table"><thead><tr><th>Fecha</th><th>SKU</th><th>Cantidad</th><th>Total</th></tr></thead><tbody>${userSales.slice().reverse().map(s=>`<tr><td>${new Date(s.date).toLocaleDateString()}</td><td>${s.sku}</td><td>${s.quantity}</td><td>$${fmt(s.total)}</td></tr>`).join('')}</tbody></table>`; }
+function updateSalePrice(){ const sku=document.getElementById('saleProductSku').value; const inv=inventory.find(i=>i.sku===sku); if(inv) document.getElementById('saleUnitPrice').value=inv.price; updateSaleTotal(); }
+function updateSaleTotal(){ const qty=pv('saleQuantity'); const price=pv('saleUnitPrice'); document.getElementById('saleTotal').value=`$${fmt(qty*price)}`; }
+function updateWarehouseSelects(){ const distProduct=document.getElementById('distProductSku'); const saleProduct=document.getElementById('saleProductSku'); const distWh=document.getElementById('distWarehouse'); const saleWh=document.getElementById('saleWarehouse'); if(distProduct) distProduct.innerHTML=inventory.map(i=>`<option value="${i.sku}">${i.sku} - ${i.name}</option>`).join(''); if(saleProduct) saleProduct.innerHTML=inventory.map(i=>`<option value="${i.sku}">${i.sku}</option>`).join(''); if(distWh) distWh.innerHTML=warehouses.map(w=>`<option value="${w.id}">${w.name}</option>`).join(''); if(saleWh) saleWh.innerHTML=warehouses.map(w=>`<option value="${w.id}">${w.name}</option>`).join(''); if(inventory[0]) updateSalePrice(); }
+function distributeToWarehouse(){ const sku=document.getElementById('distProductSku').value; const whId=document.getElementById('distWarehouse').value; const qty=parseInt(document.getElementById('distQuantity').value); const invItem=inventory.find(i=>i.sku===sku); if(!invItem||invItem.quantity<qty){alert('Stock insuficiente');return;} invItem.quantity-=qty; const existing=warehouseStock.find(ws=>ws.warehouseId===whId && ws.sku===sku); if(existing) existing.quantity+=qty; else warehouseStock.push({warehouseId:whId, sku, quantity:qty}); saveAll(); renderInventory(); renderWarehouses(); updateDashboard(); alert('Distribuido'); }
+function updateDashboard(){ const totalStock=inventory.reduce((a,b)=>a+b.quantity,0); const totalValue=inventory.reduce((a,b)=>a+(b.price*b.quantity),0); const totalSales=isAdmin()?sales.reduce((a,b)=>a+b.total,0):sales.filter(s=>s.clientId===currentUser.id).reduce((a,b)=>a+b.total,0); const unitsSold=isAdmin()?sales.reduce((a,b)=>a+b.quantity,0):sales.filter(s=>s.clientId===currentUser.id).reduce((a,b)=>a+b.quantity,0); document.getElementById('dashboardStats').innerHTML=`<div class="stat-card"><div class="stat-label">📦 Stock total</div><div class="stat-value">${totalStock}</div></div><div class="stat-card"><div class="stat-label">💰 Valor inventario</div><div class="stat-value">$${fmt(totalValue)}</div></div><div class="stat-card"><div class="stat-label">💵 Ventas (${isAdmin()?'total':'tuyas'})</div><div class="stat-value">$${fmt(totalSales)}</div></div><div class="stat-card"><div class="stat-label">📈 Unidades vendidas</div><div class="stat-value">${unitsSold}</div></div>`; const prodSales={}; (isAdmin()?sales:sales.filter(s=>s.clientId===currentUser.id)).forEach(s=>{prodSales[s.sku]=(prodSales[s.sku]||0)+s.quantity;}); const top=Object.entries(prodSales).sort((a,b)=>b[1]-a[1]).slice(0,5); document.getElementById('topProducts').innerHTML=top.length?`<table><thead><tr><th>SKU</th><th>Unidades</th></tr></thead><tbody>${top.map(([sku,q])=>`<tr><td>${sku}</td><td>${q}</td></tr>`).join('')}</tbody></table>`:'<div>Sin datos</div>'; const lowStock=inventory.filter(i=>i.quantity<5); document.getElementById('lowStockAlert').innerHTML=lowStock.length?lowStock.map(i=>`<div>⚠️ ${i.sku}: ${i.quantity} uds</div>`).join(''):'✅ Stock ok'; const whSum=warehouses.map(wh=>`<div><strong>${wh.name}</strong>: ${warehouseStock.filter(ws=>ws.warehouseId===wh.id).reduce((a,b)=>a+b.quantity,0)} uds</div>`).join(''); document.getElementById('warehouseSummary').innerHTML=whSum; document.getElementById('salesSummary').innerHTML=`<div>💰 Total ventas: $${fmt(totalSales)}</div><div>📦 Unidades: ${unitsSold}</div>`; }
+function renderWarehouses(){ const el=document.getElementById('warehousesList'); el.innerHTML=`<table><thead><tr><th>Almacén</th><th>Stock</th></tr></thead><tbody>${warehouses.map(wh=>`<tr><td>${wh.name}</td><td>${warehouseStock.filter(ws=>ws.warehouseId===wh.id).reduce((a,b)=>a+b.quantity,0)}</td></tr>`).join('')}</tbody></table>`; }
+function renderSKUs(){ const el=document.getElementById('skuList'); if(!skus.length){el.innerHTML='<div>Sin SKUs</div>';return;} el.innerHTML=`<table><thead><tr><th>SKU</th><th>Nombre</th><th>Precio</th></tr></thead><tbody>${skus.map(s=>`<tr><td>${s.code}</td><td>${s.name}</td><td>$${fmt(s.price)}</td></tr>`).join('')}</tbody></table>`; }
+function renderMaint(){ document.getElementById('maintHourCost').innerHTML=`<div style="font-size:24px;">$${fmt(getMaintCostPerHour())} /hora</div>`; }
+function resetAllData(){ if(confirm('Resetear todo')){localStorage.clear(); location.reload();} }
+loadStorage();
+window.setRole=setRole; window.selectedRole='admin';
+</script>
+</body>
+</html>
