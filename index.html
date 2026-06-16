@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D Print Manager Pro - Local</title>
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* (Mismo CSS que antes, no cambia) */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #0F172A;
+            --card: #1E293B;
+            --border: #334155;
+            --text: #F1F5F9;
+            --muted: #94A3B8;
+            --primary: #3B82F6;
+            --success: #22C55E;
+            --warn: #EAB308;
+            --danger: #EF4444;
+            --purple: #8B5CF6;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 16px;
+            min-height: 100vh;
+        }
+        .app { max-width: 1400px; margin: 0 auto; }
+        
+        #authScreen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0F172A, #1E293B);
+        }
+        .auth-container {
+            background: var(--card);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+            border: 1px solid var(--border);
+        }
+        .auth-container h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .auth-container .sub {
+            color: var(--muted);
+            margin-bottom: 24px;
+        }
+        .auth-container input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 15px;
+            margin-bottom: 12px;
+        }
+        .auth-container input:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        .auth-container .btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .auth-container .btn.primary {
+            background: var(--primary);
+            color: white;
+        }
+        .auth-container .btn.primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        .auth-container .btn.google {
+            background: #fff;
+            color: #333;
+            margin-top: 8px;
+        }
+        .auth-container .btn.quick {
+            background: var(--success);
+            color: white;
+            margin-top: 8px;
+        }
+        .auth-container .btn.quick:hover {
+            opacity: 0.9;
+        }
+        .auth-container .toggle-link {
+            color: var(--primary);
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 12px;
+            display: block;
+            text-align: center;
+        }
+        .auth-container .error {
+            color: var(--danger);
+            font-size: 14px;
+            margin-top: 8px;
+        }
+        .auth-container .demo-creds {
+            margin-top: 20px;
+            padding: 16px;
+            background: var(--bg);
+            border-radius: 12px;
+            border: 1px dashed var(--border);
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .auth-container .demo-creds code {
+            background: var(--card);
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: var(--text);
+            font-size: 13px;
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 8px;
+        }
+        .role-badge.admin { background: var(--purple); color: white; }
+        .role-badge.client { background: var(--primary); color: white; }
+        .role-badge.operator { background: var(--warn); color: #333; }
+        
+        #mainApp { display: none; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: var(--card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        .header .logo {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .header .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .header .user-info .email {
+            color: var(--muted);
+            font-size: 14px;
+        }
+        .header .user-info .role {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: var(--primary);
+            color: white;
+        }
+        .header .user-info .btn-logout {
+            padding: 8px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text);
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .header .user-info .btn-logout:hover {
+            background: var(--danger);
+            border-color: var(--danger);
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--card);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+        .tab {
+            flex: 1;
+            min-width: 80px;
+            padding: 10px 12px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: var(--muted);
+            transition: all .15s;
+        }
+        .tab.active {
+            background: var(--bg);
+            color: var(--text);
+        }
+        .tab:hover { color: var(--text); }
+        .section { display: none; }
+        .section.active { display: block; }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text);
+            margin-top: 8px;
+        }
+        .stat-label {
+            font-size: 13px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+        .stat-card .change {
+            font-size: 13px;
+            margin-top: 4px;
+        }
+        .stat-card .change.positive { color: var(--success); }
+        .stat-card .change.negative { color: var(--danger); }
+        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+        .row4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+        label {
+            font-size: 12px;
+            color: var(--muted);
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            background: var(--bg);
+            color: var(--text);
+            outline: none;
+            transition: all .2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        input[readonly] {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            transition: all .2s;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            opacity: 0.9;
+        }
+        .btn.primary {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+        .btn.success {
+            background: var(--success);
+            color: #fff;
+            border-color: var(--success);
+        }
+        .btn.danger {
+            background: var(--danger);
+            color: #fff;
+            border-color: var(--danger);
+        }
+        .btn.purple {
+            background: var(--purple);
+            color: #fff;
+            border-color: var(--purple);
+        }
+        .btn.small { padding: 6px 12px; font-size: 12px; }
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .badge.blue { background: #1E3A5F; color: #93C5FD; }
+        .badge.green { background: #064E3B; color: #6EE7B7; }
+        .badge.amber { background: #78350F; color: #FCD34D; }
+        .badge.red { background: #7F1D1D; color: #FCA5A5; }
+        .badge.purple { background: #4C1D95; color: #C4B5FD; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        table th {
+            background: var(--bg);
+            padding: 12px;
+            text-align: left;
+            font-size: 12px;
+            color: var(--muted);
+            border-bottom: 1.5px solid var(--border);
+        }
+        table td {
+            padding: 12px;
+            border-bottom: 0.5px solid var(--border);
+            vertical-align: middle;
+        }
+        table tr:hover td { background: rgba(255,255,255,0.03); }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--muted);
+        }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+        .product-card {
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            transition: all .2s;
+        }
+        .product-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+        .product-card img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 8px;
+            background: var(--card);
+        }
+        .product-card .name {
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        .product-card .sku {
+            color: var(--muted);
+            font-size: 12px;
+        }
+        .product-card .price {
+            color: var(--success);
+            font-weight: 700;
+            font-size: 18px;
+            margin-top: 4px;
+        }
+        .product-card .stock {
+            font-size: 13px;
+            margin-top: 4px;
+        }
+        .product-card .btn {
+            margin-top: 10px;
+            width: 100%;
+        }
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+        .fil-row {
+            display: grid;
+            grid-template-columns: 140px 100px 100px 80px 28px;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .fil-row input, .fil-row select {
+            padding: 8px 10px;
+            font-size: 13px;
+        }
+        .del-btn {
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 20px;
+            transition: color .2s;
+        }
+        .del-btn:hover { color: var(--danger); }
+        .breakdown-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 0.5px solid var(--border);
+            font-size: 14px;
+        }
+        .breakdown-row.total {
+            font-weight: 700;
+            border-top: 2px solid var(--primary);
+            margin-top: 8px;
+            padding-top: 14px;
+        }
+        .breakdown-row .pct {
+            color: var(--muted);
+            font-size: 12px;
+            margin-right: 8px;
+        }
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .result-card {
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 14px;
+            border: 1px solid var(--border);
+        }
+        .result-card.highlight { border-color: var(--primary); background: #1E3A5F; }
+        .result-card.success { border-color: var(--success); }
+        .result-card.warn { border-color: var(--warn); }
+        .result-label {
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+        .result-val {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .result-val.green { color: var(--success); }
+        .result-val.amber { color: var(--warn); }
+        .result-val.red { color: var(--danger); }
+        .low-stock { color: var(--danger); }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 24px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 0.5px solid var(--border);
+        }
+        .order-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        .order-status.pending { background: #78350F; color: #FCD34D; }
+        .order-status.processing { background: #1E3A5F; color: #93C5FD; }
+        .order-status.completed { background: #064E3B; color: #6EE7B7; }
+        .order-status.cancelled { background: #7F1D1D; color: #FCA5A5; }
+        @media (max-width: 768px) {
+            .row2, .row3, .row4 { grid-template-columns: 1fr; }
+            .header { flex-direction: column; gap: 12px; align-items: stretch; }
+            .header .user-info { flex-wrap: wrap; justify-content: center; }
+            .fil-row { grid-template-columns: 1fr 1fr; gap: 4px; }
+            .fil-row .del-btn { grid-column: span 2; text-align: right; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ============ AUTH SCREEN (SIN FIREBASE) ============ -->
+<div id="authScreen">
+    <div class="auth-container">
+        <h1>🖨️ 3D Print Manager</h1>
+        <p class="sub">Accede con tu cuenta (demo)</p>
+        
+        <div id="authError" class="error" style="display:none;"></div>
+        
+        <input id="authEmail" type="email" placeholder="Correo electrónico" value="admin@3dprint.com" />
+        <input id="authPassword" type="password" placeholder="Contraseña" value="admin123" />
+        
+        <button class="btn primary" onclick="handleAuth()" id="authBtn">Iniciar sesión</button>
+        <button class="btn quick" onclick="quickAccess()">🚀 Acceso rápido</button>
+        
+        <span class="toggle-link" onclick="toggleAuthMode()" id="authToggle">¿No tienes cuenta? Regístrate</span>
+        
+        <div class="demo-creds">
+            <strong>🔑 Credenciales de prueba (local)</strong><br>
+            <code>admin@3dprint.com</code> / <code>admin123</code> (Administrador)<br>
+            <code>cliente@3dprint.com</code> / <code>cliente123</code> (Cliente)
+        </div>
+        <div style="margin-top:12px; font-size:12px; color:var(--muted);">
+            ⚠️ Modo local: los datos se guardan en tu navegador (localStorage).
+        </div>
+    </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div id="mainApp">
+    <div class="header">
+        <div class="logo">🖨️ 3D Print Manager</div>
+        <div class="user-info">
+            <span class="email" id="userEmail">cargando...</span>
+            <span class="role" id="userRole">Admin</span>
+            <button class="btn-logout" onclick="logout()">🚪 Cerrar sesión</button>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('dashboard')">📊 Dashboard</button>
+        <button class="tab" onclick="showTab('calc')">🧮 Calcular</button>
+        <button class="tab" onclick="showTab('catalog')">📚 Catálogo</button>
+        <button class="tab" onclick="showTab('inventory')">📦 Inventario</button>
+        <button class="tab" onclick="showTab('warehouses')">🏪 Multi-almacén</button>
+        <button class="tab" onclick="showTab('orders')">📋 Pedidos</button>
+        <button class="tab" onclick="showTab('sales')">💰 Ventas</button>
+        <button class="tab" onclick="showTab('skus')">🏷️ SKUs</button>
+        <button class="tab" onclick="showTab('maint')">🔧 Mantenimiento</button>
+        <button class="tab" onclick="showTab('config')">⚙️ Config</button>
+    </div>
+
+    <!-- ===== DASHBOARD ===== -->
+    <div id="tab-dashboard" class="section active">
+        <div class="dashboard-grid" id="dashboardStats"></div>
+        <div class="row2">
+            <div class="card">
+                <div class="card-title">📈 Ventas vs Mes Anterior</div>
+                <div class="chart-container"><canvas id="salesChart"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="card-title">🏷️ Productos más vendidos</div>
+                <div id="topProducts"></div>
+            </div>
+        </div>
+        <div class="row2">
+            <div class="card">
+                <div class="card-title">⚠️ Stock bajo</div>
+                <div id="lowStockAlert"></div>
+            </div>
+            <div class="card">
+                <div class="card-title">🏪 Stock por almacén</div>
+                <div id="warehouseSummary"></div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">📊 Resumen financiero</div>
+            <div id="financialSummary"></div>
+        </div>
+    </div>
+
+    <!-- ===== CALCULADORA ===== -->
+    <div id="tab-calc" class="section">
+        <div class="card">
+            <div class="card-title">🎨 Trabajo de impresión</div>
+            <div class="row2" style="margin-bottom:16px">
+                <div><label>Nombre / descripción</label><input id="jobName" type="text" placeholder="Ej: Soporte de teléfono" oninput="calc()"></div>
+                <div><label>Impresora</label>
+                    <select id="printerSel" onchange="calc()">
+                        <option value="a1combo">A1 Combo — $12,000</option>
+                        <option value="p1scombo">P1S Combo — $15,000</option>
+                        <option value="p1p">P1P — $8,000</option>
+                        <option value="x1c" selected>X1 Carbon — $17,000</option>
+                        <option value="ams2pro">AMS 2 Pro — $10,000</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row3">
+                <div><label>Tiempo de impresión (h)</label><input id="hours" type="number" value="3.5" min="0.1" step="0.1" oninput="calc()"></div>
+                <div><label>Fallas/reimpresiones (%)</label><input id="failPct" type="number" value="8" min="0" max="50" step="1" oninput="calc()"></div>
+                <div><label>Núm. de piezas</label><input id="pieces" type="number" value="1" min="1" step="1" oninput="calc()"></div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">🧵 Materiales <button class="btn small" style="margin-left:auto" onclick="addFilament()">+ Agregar</button></div>
+            <div id="filaments"></div>
+        </div>
+        <div class="card">
+            <div class="card-title">💰 Precio y margen</div>
+            <div class="row2">
+                <div><label>Margen de ganancia (%)</label><input id="marginNum" type="number" value="60" min="10" max="300" step="5" oninput="calc()"></div>
+                <div><label>Mano de obra / diseño (MXN)</label><input id="labor" type="number" value="50" min="0" step="10" oninput="calc()"></div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">📊 Desglose de costos</div>
+            <div id="breakdown"></div>
+        </div>
+        <div class="result-grid" id="resultCards"></div>
+        <div class="btn-row">
+            <button class="btn" onclick="saveSKU()">💾 Guardar como SKU</button>
+            <button class="btn primary" onclick="addToInventory()">📦 Añadir a inventario</button>
+            <button class="btn purple" onclick="addToCatalog()">📚 Añadir a catálogo</button>
+        </div>
+    </div>
+
+    <!-- ===== CATÁLOGO ===== -->
+    <div id="tab-catalog" class="section">
+        <div class="card">
+            <div class="card-title">📚 Catálogo de productos
+                <button class="btn small" style="margin-left:auto" onclick="showAddProductModal()">+ Añadir producto</button>
+            </div>
+            <div id="catalogGrid" class="product-grid"></div>
+        </div>
+    </div>
+
+    <!-- ===== INVENTARIO ===== -->
+    <div id="tab-inventory" class="section">
+        <div class="card">
+            <div class="card-title">📦 Gestión de inventario
+                <button class="btn small" style="margin-left:auto" onclick="exportInventory()">📎 Exportar</button>
+            </div>
+            <div id="inventoryList"></div>
+        </div>
+    </div>
+
+    <!-- ===== MULTI-ALMACÉN ===== -->
+    <div id="tab-warehouses" class="section">
+        <div class="card">
+            <div class="card-title">🏪 Almacenes / Puntos de venta
+                <button class="btn small" style="margin-left:auto" onclick="addWarehouse()">+ Nuevo almacén</button>
+            </div>
+            <div id="warehousesList"></div>
+        </div>
+        <div class="card">
+            <div class="card-title">📦 Distribuir producto a almacenes</div>
+            <div class="row2">
+                <div><label>Producto SKU</label><select id="distProductSku"></select></div>
+                <div><label>Almacén destino</label><select id="distWarehouse"></select></div>
+                <div><label>Cantidad</label><input type="number" id="distQuantity" placeholder="Cantidad"></div>
+                <div style="display:flex;align-items:end"><button class="btn primary" onclick="distributeToWarehouse()">Distribuir</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== PEDIDOS ===== -->
+    <div id="tab-orders" class="section">
+        <div class="card">
+            <div class="card-title">📋 Pedidos de clientes
+                <button class="btn small" style="margin-left:auto" onclick="showNewOrderModal()">+ Nuevo pedido</button>
+            </div>
+            <div id="ordersList"></div>
+        </div>
+    </div>
+
+    <!-- ===== VENTAS ===== -->
+    <div id="tab-sales" class="section">
+        <div class="card">
+            <div class="card-title">💰 Registrar venta</div>
+            <div class="row2">
+                <div><label>Producto SKU</label><select id="saleProductSku" onchange="updateSalePrice()"></select></div>
+                <div><label>Cantidad</label><input type="number" id="saleQuantity" value="1" min="1" onchange="updateSaleTotal()"></div>
+                <div><label>Precio unitario (MXN)</label><input type="number" id="saleUnitPrice" onchange="updateSaleTotal()"></div>
+                <div><label>Total</label><input type="text" id="saleTotal" readonly style="background:rgba(59,130,246,0.1);font-weight:bold"></div>
+                <div><label>Almacén de venta</label><select id="saleWarehouse"></select></div>
+                <div><label>Cliente (email)</label><input id="saleCustomer" type="text" placeholder="cliente@email.com"></div>
+            </div>
+            <div class="btn-row">
+                <button class="btn success" onclick="registerSale()">✅ Registrar venta</button>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">📋 Historial de ventas</div>
+            <div id="salesHistory"></div>
+        </div>
+    </div>
+
+    <!-- ===== SKUs ===== -->
+    <div id="tab-skus" class="section">
+        <div class="card">
+            <div class="card-title">🏷️ Base de datos de trabajos (SKUs)
+                <button class="btn small" style="margin-left:auto" onclick="clearSKUs()">🗑️ Limpiar</button>
+            </div>
+            <div id="skuList"></div>
+        </div>
+    </div>
+
+    <!-- ===== MANTENIMIENTO ===== -->
+    <div id="tab-maint" class="section">
+        <div class="card"><div class="card-title">🔧 Costo de mantenimiento por hora</div><div id="maintHourCost"></div></div>
+        <div class="card"><div class="card-title">📋 Piezas y componentes</div><div id="maintList"></div></div>
+        <div class="card"><div class="card-title">📅 Presupuesto anual</div><div id="maintBudget"></div></div>
+    </div>
+
+    <!-- ===== CONFIGURACIÓN ===== -->
+    <div id="tab-config" class="section">
+        <div class="card">
+            <div class="card-title">⚡ Energía y operación</div>
+            <div class="row2">
+                <div><label>Tarifa CFE (MXN/kWh)</label><input id="cfgElec" type="number" value="2.50" step="0.1" oninput="calc()"></div>
+                <div><label>Consumo impresora (kW)</label><input id="cfgKw" type="number" value="0.35" step="0.05" oninput="calc()"></div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">⏱️ Uso estimado por año (horas)</div>
+            <div class="row4">
+                <div><label>A1 Combo</label><input id="hA1" type="number" value="1200" oninput="calc()"></div>
+                <div><label>P1S Combo</label><input id="hP1S" type="number" value="1500" oninput="calc()"></div>
+                <div><label>P1P</label><input id="hP1P" type="number" value="1200" oninput="calc()"></div>
+                <div><label>X1 Carbon</label><input id="hX1C" type="number" value="1800" oninput="calc()"></div>
+                <div><label>AMS 2 Pro</label><input id="hAMS" type="number" value="800" oninput="calc()"></div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">💰 Precios equipos (MXN)</div>
+            <div class="row4">
+                <div><label>A1 Combo</label><input id="pA1" type="number" value="12000" oninput="calc()"></div>
+                <div><label>P1S Combo</label><input id="pP1S" type="number" value="15000" oninput="calc()"></div>
+                <div><label>P1P</label><input id="pP1P" type="number" value="8000" oninput="calc()"></div>
+                <div><label>X1 Carbon</label><input id="pX1C" type="number" value="17000" oninput="calc()"></div>
+                <div><label>AMS 2 Pro</label><input id="pAMS" type="number" value="10000" oninput="calc()"></div>
+            </div>
+        </div>
+        <div class="btn-row">
+            <button class="btn danger" onclick="resetAllData()">🔄 Resetear todos los datos</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODALES ===== -->
+<div class="modal" id="productModal">
+    <div class="modal-content">
+        <h2 id="productModalTitle">Añadir producto al catálogo</h2>
+        <div class="row2">
+            <div><label>SKU</label><input id="prodSku" readonly /></div>
+            <div><label>Nombre</label><input id="prodName" placeholder="Nombre del producto" /></div>
+            <div><label>Descripción</label><textarea id="prodDesc" rows="3" placeholder="Descripción"></textarea></div>
+            <div><label>Precio (MXN)</label><input id="prodPrice" type="number" placeholder="0.00" /></div>
+            <div><label>URL de imagen</label><input id="prodImage" placeholder="https://ejemplo.com/imagen.jpg" /></div>
+            <div><label>Modelo 3D (URL)</label><input id="prodModel" placeholder="URL del archivo STL/3MF" /></div>
+        </div>
+        <div class="btn-row">
+            <button class="btn" onclick="closeModal('productModal')">Cancelar</button>
+            <button class="btn primary" onclick="saveProductToCatalog()">Guardar producto</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="orderModal">
+    <div class="modal-content">
+        <h2>Nuevo pedido</h2>
+        <div class="row2">
+            <div><label>Cliente (email)</label><input id="orderCustomer" placeholder="cliente@email.com" /></div>
+            <div><label>Producto</label><select id="orderProduct"></select></div>
+            <div><label>Cantidad</label><input id="orderQuantity" type="number" value="1" min="1" /></div>
+            <div><label>Estado</label>
+                <select id="orderStatus">
+                    <option value="pending">⏳ Pendiente</option>
+                    <option value="processing">🔄 En proceso</option>
+                    <option value="completed">✅ Completado</option>
+                    <option value="cancelled">❌ Cancelado</option>
+                </select>
+            </div>
+        </div>
+        <div class="btn-row">
+            <button class="btn" onclick="closeModal('orderModal')">Cancelar</button>
+            <button class="btn primary" onclick="saveOrder()">Crear pedido</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==================== SIN FIREBASE - MODO LOCAL ====================
+// Datos guardados en localStorage
+
+// ==================== ESTADO GLOBAL ====================
+let currentUser = null;
+let currentUserRole = 'client';
+let catalogProducts = [];
+let orders = [];
+let skus = [];
+let inventory = [];
+let warehouses = [];
+let warehouseStock = [];
+let sales = [];
+let salesChart = null;
+
+// Configuración de impresoras
+const PRINTERS = {
+    a1combo: { name: 'A1 Combo', years: 4 },
+    p1scombo: { name: 'P1S Combo', years: 5 },
+    p1p: { name: 'P1P', years: 4 },
+    x1c: { name: 'X1 Carbon', years: 5 },
+    ams2pro: { name: 'AMS 2 Pro', years: 5 }
+};
+
+const FILAMENTS_DEF = [
+    { name: 'PLA', price: 280 }, { name: 'PETG', price: 320 },
+    { name: 'ABS', price: 350 }, { name: 'ASA', price: 420 },
+    { name: 'TPU', price: 450 }, { name: 'PLA-CF', price: 580 },
+    { name: 'PETG-CF', price: 580 }, { name: 'PA Nylon', price: 650 },
+    { name: 'ABS-CF', price: 650 }
+];
+
+const MAINT_PARTS = [
+    { name: 'Nozzle latón', life: 300, cost: 80, cat: 'Nozzle' },
+    { name: 'Nozzle hardened steel', life: 600, cost: 180, cat: 'Nozzle' },
+    { name: 'Placa PEI', life: 750, cost: 350, cat: 'Cama' },
+    { name: 'Engranajes extrusor', life: 1500, cost: 280, cat: 'Extrusor' },
+    { name: 'Tubo PTFE', life: 750, cost: 60, cat: 'Extrusor' },
+    { name: 'Grasa litio', life: 500, cost: 150, cat: 'Lubricación' },
+    { name: 'Ventilador hotend', life: 1500, cost: 120, cat: 'Ventiladores' },
+    { name: 'Termistor', life: 2000, cost: 80, cat: 'Sensores' }
+];
+
+let filamentRows = [];
+let _lastCalc = null;
+
+// ==================== AUTH LOCAL ====================
+let isLoginMode = true;
+const USERS = {
+    'admin@3dprint.com': { password: 'admin123', role: 'admin' },
+    'cliente@3dprint.com': { password: 'cliente123', role: 'client' }
+};
+
+function toggleAuthMode() {
+    isLoginMode = !isLoginMode;
+    document.getElementById('authBtn').textContent = isLoginMode ? 'Iniciar sesión' : 'Registrarse';
+    document.getElementById('authToggle').textContent = isLoginMode ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión';
+    document.getElementById('authError').style.display = 'none';
+}
+
+function showAuthError(msg) {
+    const el = document.getElementById('authError');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+function quickAccess() {
+    document.getElementById('authEmail').value = 'admin@3dprint.com';
+    document.getElementById('authPassword').value = 'admin123';
+    handleAuth();
+}
+
+function handleAuth() {
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    if (!email || !password) { showAuthError('Completa todos los campos'); return; }
+    
+    if (isLoginMode) {
+        // Login
+        if (USERS[email] && USERS[email].password === password) {
+            currentUser = { email, role: USERS[email].role };
+            currentUserRole = currentUser.role;
+            enterApp();
+        } else {
+            showAuthError('Credenciales incorrectas. Usa admin@3dprint.com / admin123');
+        }
+    } else {
+        // Registro (solo demo)
+        if (USERS[email]) {
+            showAuthError('El usuario ya existe');
+        } else {
+            USERS[email] = { password, role: 'client' };
+            currentUser = { email, role: 'client' };
+            currentUserRole = 'client';
+            // Guardar en localStorage para persistencia
+            localStorage.setItem('users', JSON.stringify(USERS));
+            enterApp();
+        }
+    }
+}
+
+function enterApp() {
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    document.getElementById('userEmail').textContent = currentUser.email;
+    document.getElementById('userRole').textContent = currentUserRole.charAt(0).toUpperCase() + currentUserRole.slice(1);
+    
+    // Ocultar pestañas según rol
+    const isAdmin = currentUserRole === 'admin';
+    const isOperator = currentUserRole === 'operator';
+    document.querySelectorAll('.tab').forEach(tab => {
+        const text = tab.textContent.trim();
+        if (!isAdmin && (text.includes('Config') || text.includes('SKUs') || text.includes('Mantenimiento'))) {
+            tab.style.display = 'none';
+        }
+        if (!isAdmin && !isOperator && text.includes('Inventario')) {
+            tab.style.display = 'none';
+        }
+    });
+    
+    loadLocalData();
+    initApp();
+}
+
+function logout() {
+    currentUser = null;
+    currentUserRole = 'client';
+    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('mainApp').style.display = 'none';
+}
+
+// Cargar usuarios guardados
+try {
+    const savedUsers = localStorage.getItem('users');
+    if (savedUsers) {
+        const parsed = JSON.parse(savedUsers);
+        Object.assign(USERS, parsed);
+    }
+} catch (e) {}
+
+// ==================== LOAD/SAVE LOCAL ====================
+function loadLocalData() {
+    try {
+        if (localStorage.getItem('catalog')) catalogProducts = JSON.parse(localStorage.getItem('catalog'));
+        if (localStorage.getItem('inventory')) inventory = JSON.parse(localStorage.getItem('inventory'));
+        if (localStorage.getItem('warehouses')) warehouses = JSON.parse(localStorage.getItem('warehouses'));
+        if (localStorage.getItem('warehouseStock')) warehouseStock = JSON.parse(localStorage.getItem('warehouseStock'));
+        if (localStorage.getItem('sales')) sales = JSON.parse(localStorage.getItem('sales'));
+        if (localStorage.getItem('skus')) skus = JSON.parse(localStorage.getItem('skus'));
+        if (localStorage.getItem('orders')) orders = JSON.parse(localStorage.getItem('orders'));
+    } catch (e) { console.error('Error loading local data:', e); }
+}
+
+function saveLocalData() {
+    localStorage.setItem('catalog', JSON.stringify(catalogProducts));
+    localStorage.setItem('inventory', JSON.stringify(inventory));
+    localStorage.setItem('warehouses', JSON.stringify(warehouses));
+    localStorage.setItem('warehouseStock', JSON.stringify(warehouseStock));
+    localStorage.setItem('sales', JSON.stringify(sales));
+    localStorage.setItem('skus', JSON.stringify(skus));
+    localStorage.setItem('orders', JSON.stringify(orders));
+}
+
+// ==================== UTILIDADES ====================
+function pv(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
+function fmt(n) { return new Intl.NumberFormat('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n); }
+
+function getPrinterCostPerHour(printerId) {
+    const priceMap = {
+        a1combo: () => pv('pA1'), p1scombo: () => pv('pP1S'),
+        p1p: () => pv('pP1P'), x1c: () => pv('pX1C'), ams2pro: () => pv('pAMS')
+    };
+    const hourMap = {
+        a1combo: () => pv('hA1'), p1scombo: () => pv('hP1S'),
+        p1p: () => pv('hP1P'), x1c: () => pv('hX1C'), ams2pro: () => pv('hAMS')
+    };
+    const p = PRINTERS[printerId];
+    const price = priceMap[printerId]();
+    const hrs = hourMap[printerId]();
+    const yearlyCost = price / p.years;
+    return hrs > 0 ? yearlyCost / hrs : 0;
+}
+
+function getMaintCostPerHour() {
+    return MAINT_PARTS.reduce((a, p) => a + (p.life > 0 ? p.cost / p.life : 0), 0);
+}
+
+function genSKU(data) {
+    const printerCode = {
+        a1combo: 'A1C', p1scombo: 'P1S',
+        p1p: 'P1P', x1c: 'X1C', ams2pro: 'AMS'
+    };
+    const pc = printerCode[data.pid] || 'GEN';
+    const fil = data.fils && data.fils.length > 0 ? data.fils[0].name.substring(0, 3).toUpperCase() : 'GEN';
+    const idx = String(Date.now()).slice(-6);
+    return `3D-${pc}-${fil}-${idx}`;
+}
+
+function showTab(t) {
+    const tabs = ['dashboard', 'calc', 'catalog', 'inventory', 'warehouses', 'orders', 'sales', 'skus', 'maint', 'config'];
+    document.querySelectorAll('.tab').forEach((b, i) => {
+        b.classList.toggle('active', tabs[i] === t);
+    });
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById('tab-' + t).classList.add('active');
+    
+    if (t === 'dashboard') updateDashboard();
+    if (t === 'catalog') renderCatalog();
+    if (t === 'inventory') renderInventory();
+    if (t === 'warehouses') renderWarehouses();
+    if (t === 'sales') renderSalesHistory();
+    if (t === 'orders') renderOrders();
+    if (t === 'skus') renderSKUs();
+    if (t === 'maint') renderMaint();
+    if (t === 'calc') calc();
+}
+
+// ==================== CALCULADORA ====================
+function addFilament(name = 'PLA', price = 280, grams = 85) {
+    const id = 'fil_' + Date.now() + '_' + Math.random();
+    filamentRows.push(id);
+    const div = document.createElement('div');
+    div.className = 'fil-row';
+    div.id = id;
+    const opts = FILAMENTS_DEF.map(f =>
+        `<option value="${f.price}" ${f.name === name ? 'selected' : ''}>${f.name}</option>`
+    ).join('');
+    div.innerHTML = `
+        <select onchange="this.nextElementSibling.value=this.value;calc()">${opts}</select>
+        <input type="number" value="${price}" min="50" step="10" placeholder="$" oninput="calc()">
+        <input type="number" value="${grams}" min="1" step="1" placeholder="g" oninput="calc()">
+        <div style="font-size:12px;color:var(--muted)" id="${id}_pct">—</div>
+        <button class="del-btn" onclick="removeFil('${id}')">✖</button>`;
+    document.getElementById('filaments').appendChild(div);
+    calc();
+}
+
+function removeFil(id) {
+    document.getElementById(id)?.remove();
+    filamentRows = filamentRows.filter(x => x !== id);
+    calc();
+}
+
+function getFilaments() {
+    return filamentRows.map(id => {
+        const el = document.getElementById(id);
+        if (!el) return null;
+        const inputs = el.querySelectorAll('input');
+        const sel = el.querySelector('select');
+        return {
+            name: sel.options[sel.selectedIndex]?.text || 'PLA',
+            price: parseFloat(inputs[0]?.value) || 0,
+            grams: parseFloat(inputs[1]?.value) || 0,
+            id
+        };
+    }).filter(Boolean);
+}
+
+function calc() {
+    const pid = document.getElementById('printerSel').value;
+    const hours = pv('hours');
+    const failPct = pv('failPct') / 100;
+    const pieces = Math.max(1, pv('pieces'));
+    const margin = pv('marginNum') / 100;
+    const labor = pv('labor');
+    const elec = pv('cfgElec');
+    const kw = pv('cfgKw');
+    const fils = getFilaments();
+    const totalGrams = fils.reduce((a, f) => a + f.grams, 0);
+    fils.forEach(f => {
+        const pctEl = document.getElementById(f.id + '_pct');
+        if (pctEl) pctEl.textContent = totalGrams > 0 ? Math.round(f.grams / totalGrams * 100) + '%' : '—';
+    });
+    const matCost = fils.reduce((a, f) => a + f.price * (f.grams / 1000), 0);
+    const energyCost = kw * elec * hours;
+    const deprCost = getPrinterCostPerHour(pid) * hours;
+    const maintCost = getMaintCostPerHour() * hours;
+    const subtotal = matCost + energyCost + deprCost + maintCost + labor;
+    const failAdj = subtotal * failPct;
+    const totalCost = subtotal + failAdj;
+    const price = totalCost * (1 + margin);
+    const priceIVA = price * 1.16;
+    const pricePerPiece = priceIVA / pieces;
+    const margin_real = (priceIVA - totalCost) / priceIVA;
+    
+    const items = [
+        { label: 'Material', val: matCost, pct: totalCost > 0 ? matCost / totalCost * 100 : 0 },
+        { label: 'Energía', val: energyCost, pct: totalCost > 0 ? energyCost / totalCost * 100 : 0 },
+        { label: 'Depreciación', val: deprCost, pct: totalCost > 0 ? deprCost / totalCost * 100 : 0 },
+        { label: 'Mantenimiento', val: maintCost, pct: totalCost > 0 ? maintCost / totalCost * 100 : 0 },
+        { label: 'Mano de obra', val: labor, pct: totalCost > 0 ? labor / totalCost * 100 : 0 },
+        { label: `Fallas (${pv('failPct')}%)`, val: failAdj, pct: totalCost > 0 ? failAdj / totalCost * 100 : 0 },
+    ];
+    document.getElementById('breakdown').innerHTML = items.map(it =>
+        `<div class="breakdown-row"><span>${it.label}</span><span><span class="pct">${it.pct.toFixed(1)}%</span> $${fmt(it.val)}</span></div>`
+    ).join('') +
+    `<div class="breakdown-row total"><span>Costo total</span><span>$${fmt(totalCost)} MXN</span></div>`;
+    
+    document.getElementById('resultCards').innerHTML = `
+        <div class="result-card"><div class="result-label">Costo producción</div><div class="result-val">$${fmt(totalCost)}</div></div>
+        <div class="result-card success"><div class="result-label">Precio sin IVA</div><div class="result-val green">$${fmt(price)}</div></div>
+        <div class="result-card highlight"><div class="result-label">Precio con IVA</div><div class="result-val">$${fmt(priceIVA)}</div></div>
+        <div class="result-card warn"><div class="result-label">Precio por pieza (×${pieces})</div><div class="result-val amber">$${fmt(pricePerPiece)}</div></div>
+        <div class="result-card"><div class="result-label">Ganancia bruta</div><div class="result-val green">$${fmt(priceIVA - totalCost)}</div></div>
+        <div class="result-card"><div class="result-label">Margen real</div><div class="result-val" style="color:${margin_real > 0.3 ? 'var(--success)' : 'var(--warn)'}">${(margin_real * 100).toFixed(1)}%</div></div>`;
+    
+    _lastCalc = {
+        pid, hours, failPct, pieces, margin, labor,
+        fils, matCost, energyCost, deprCost, maintCost,
+        failAdj, totalCost, price, priceIVA, pricePerPiece,
+        jobName: document.getElementById('jobName').value || 'Sin nombre'
+    };
+}
+
+// ==================== SKUs ====================
+function saveSKU() {
+    if (!_lastCalc) return;
+    const d = _lastCalc;
+    const code = genSKU(d);
+    const sku = {
+        code,
+        name: d.jobName,
+        printer: PRINTERS[d.pid].name,
+        hours: d.hours,
+        fils: d.fils,
+        matCost: d.matCost,
+        totalCost: d.totalCost,
+        price: d.priceIVA,
+        margin: ((d.priceIVA - d.totalCost) / d.priceIVA * 100).toFixed(1),
+        pieces: d.pieces,
+        pricePerPiece: d.pricePerPiece,
+        createdAt: new Date().toISOString()
+    };
+    skus.push(sku);
+    saveLocalData();
+    renderSKUs();
+    showTab('skus');
+    alert(`SKU ${code} guardado correctamente`);
+}
+
+function renderSKUs() {
+    const el = document.getElementById('skuList');
+    if (skus.length === 0) {
+        el.innerHTML = '<div class="empty-state">No hay SKUs guardados</div>';
+        return;
+    }
+    el.innerHTML = `<table><thead><tr><th>SKU</th><th>Nombre</th><th>Horas</th><th>Costo</th><th>Precio</th><th>Margen</th></tr></thead><tbody>${skus.map(s =>
+        `<tr><td><span class="badge blue">${s.code}</span></td><td>${s.name}</td><td>${s.hours}h</td><td>$${fmt(s.totalCost)}</td><td>$${fmt(s.price)}</td><td class="green">${s.margin}%</td></tr>`
+    ).join('')}</tbody></table>`;
+}
+
+function clearSKUs() {
+    if (confirm('¿Borrar todos los SKUs?')) {
+        skus = [];
+        saveLocalData();
+        renderSKUs();
+    }
+}
+
+// ==================== INVENTARIO ====================
+function addToInventory() {
+    if (!_lastCalc) return;
+    const d = _lastCalc;
+    const skuCode = genSKU(d);
+    const existing = inventory.find(i => i.sku === skuCode);
+    const quantity = d.pieces;
+    if (existing) {
+        existing.quantity += quantity;
+        existing.price = d.priceIVA;
+        existing.cost = d.totalCost;
+    } else {
+        inventory.push({ sku: skuCode, name: d.jobName, quantity, price: d.priceIVA, cost: d.totalCost, createdAt: new Date().toISOString() });
+    }
+    saveLocalData();
+    // Añadir al almacén principal
+    const mainWh = warehouses[0];
+    if (mainWh) {
+        const stockItem = warehouseStock.find(ws => ws.warehouseId === mainWh.id && ws.sku === skuCode);
+        if (stockItem) stockItem.quantity += quantity;
+        else warehouseStock.push({ warehouseId: mainWh.id, sku: skuCode, quantity });
+        saveLocalData();
+    }
+    renderInventory();
+    updateDashboard();
+    alert(`${quantity} unidad(es) añadidas al inventario con SKU: ${skuCode}`);
+}
+
+function renderInventory() {
+    const el = document.getElementById('inventoryList');
+    if (inventory.length === 0) {
+        el.innerHTML = '<div class="empty-state">No hay productos en inventario</div>';
+        return;
+    }
+    el.innerHTML = `<table><thead><tr><th>SKU</th><th>Producto</th><th>Cantidad</th><th>Costo prod.</th><th>Precio venta</th><th>Ganancia</th></tr></thead><tbody>${inventory.map(i =>
+        `<tr><td><span class="badge blue">${i.sku}</span></td><td>${i.name}</td><td class="${i.quantity < 5 ? 'low-stock' : ''}">${i.quantity}</td><td>$${fmt(i.cost)}</td><td>$${fmt(i.price)}</td><td class="green">$${fmt(i.price - i.cost)}</td></tr>`
+    ).join('')}</tbody></table>`;
+}
+
+function exportInventory() {
+    let csv = "SKU,Nombre,Cantidad,Costo,Precio\n" + inventory.map(i =>
+        `${i.sku},${i.name},${i.quantity},${i.cost},${i.price}`
+    ).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `inventario_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+}
+
+// ==================== CATÁLOGO ====================
+function showAddProductModal() {
+    document.getElementById('productModalTitle').textContent = 'Añadir producto al catálogo';
+    document.getElementById('prodSku').value = '';
+    document.getElementById('prodName').value = '';
+    document.getElementById('prodDesc').value = '';
+    document.getElementById('prodPrice').value = '';
+    document.getElementById('prodImage').value = '';
+    document.getElementById('prodModel').value = '';
+    document.getElementById('productModal').classList.add('active');
+}
+
+function addToCatalog() {
+    if (!_lastCalc) return;
+    const d = _lastCalc;
+    const skuCode = genSKU(d);
+    document.getElementById('prodSku').value = skuCode;
+    document.getElementById('prodName').value = d.jobName;
+    document.getElementById('prodPrice').value = d.priceIVA;
+    document.getElementById('productModal').classList.add('active');
+}
+
+function saveProductToCatalog() {
+    const sku = document.getElementById('prodSku').value.trim();
+    const name = document.getElementById('prodName').value.trim();
+    const desc = document.getElementById('prodDesc').value.trim();
+    const price = parseFloat(document.getElementById('prodPrice').value) || 0;
+    const image = document.getElementById('prodImage').value.trim();
+    const model = document.getElementById('prodModel').value.trim();
+    
+    if (!sku || !name) { alert('SKU y nombre son obligatorios'); return; }
+    
+    const product = { sku, name, description: desc, price, image, model, createdAt: new Date().toISOString() };
+    catalogProducts.push(product);
+    saveLocalData();
+    renderCatalog();
+    closeModal('productModal');
+    alert(`Producto ${name} añadido al catálogo`);
+}
+
+function renderCatalog() {
+    const el = document.getElementById('catalogGrid');
+    if (catalogProducts.length === 0) {
+        el.innerHTML = '<div class="empty-state">No hay productos en el catálogo</div>';
+        return;
+    }
+    el.innerHTML = catalogProducts.map(p => `
+        <div class="product-card">
+            ${p.image ? `<img src="${p.image}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/220x180?text=Sin+imagen'">` : 
+            `<div style="height:180px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;">📷 Sin imagen</div>`}
+            <div class="name">${p.name}</div>
+            <div class="sku">SKU: ${p.sku}</div>
+            <div class="price">$${fmt(p.price)}</div>
+            <div class="stock">${p.model ? '📐 Modelo disponible' : '📐 Sin modelo'}</div>
+            <button class="btn primary small" onclick="orderFromCatalog('${p.sku}')">🛒 Pedir</button>
+        </div>
+    `).join('');
+}
+
+function orderFromCatalog(sku) {
+    const product = catalogProducts.find(p => p.sku === sku);
+    if (!product) return;
+    showTab('orders');
+    document.getElementById('orderProduct').value = sku;
+    document.getElementById('orderCustomer').value = currentUser?.email || '';
+    document.getElementById('orderModal').classList.add('active');
+    updateOrderProductSelect();
+}
+
+// ==================== ALMACENES ====================
+function addWarehouse() {
+    const name = prompt('Nombre del almacén/punto de venta:');
+    if (!name) return;
+    const location = prompt('Ubicación (opcional):');
+    const wh = { id: 'wh_' + Date.now(), name, location: location || '', createdAt: new Date().toISOString() };
+    warehouses.push(wh);
+    saveLocalData();
+    renderWarehouses();
+    updateWarehouseSelects();
+}
+
+function renderWarehouses() {
+    const el = document.getElementById('warehousesList');
+    el.innerHTML = `<table><thead><tr><th>Almacén</th><th>Ubicación</th><th>Productos</th></tr></thead><tbody>${warehouses.map(wh => {
+        const stockItems = warehouseStock.filter(ws => ws.warehouseId === wh.id);
+        const totalItems = stockItems.reduce((a, b) => a + b.quantity, 0);
+        return `<tr><td><strong>${wh.name}</strong></td><td>${wh.location || '—'}</td><td>${totalItems} unidades (${stockItems.length} SKUs)</td></tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+function distributeToWarehouse() {
+    const sku = document.getElementById('distProductSku').value;
+    const whId = document.getElementById('distWarehouse').value;
+    const qty = parseInt(document.getElementById('distQuantity').value);
+    if (!sku || !whId || !qty || qty <= 0) { alert('Complete todos los campos'); return; }
+    const inventoryItem = inventory.find(i => i.sku === sku);
+    if (!inventoryItem || inventoryItem.quantity < qty) {
+        alert(`Stock insuficiente. Disponible: ${inventoryItem?.quantity || 0}`);
+        return;
+    }
+    inventoryItem.quantity -= qty;
+    const existing = warehouseStock.find(ws => ws.warehouseId === whId && ws.sku === sku);
+    if (existing) existing.quantity += qty;
+    else warehouseStock.push({ warehouseId: whId, sku, quantity: qty });
+    saveLocalData();
+    renderInventory();
+    renderWarehouses();
+    updateDashboard();
+    alert(`${qty} unidades de ${sku} distribuidas`);
+}
+
+function updateWarehouseSelects() {
+    const distProduct = document.getElementById('distProductSku');
+    const saleProduct = document.getElementById('saleProductSku');
+    const distWh = document.getElementById('distWarehouse');
+    const saleWh = document.getElementById('saleWarehouse');
+    
+    if (distProduct) {
+        distProduct.innerHTML = inventory.map(i =>
+            `<option value="${i.sku}">${i.sku} - ${i.name} (${i.quantity})</option>`
+        ).join('');
+    }
+    if (saleProduct) {
+        saleProduct.innerHTML = inventory.map(i =>
+            `<option value="${i.sku}">${i.sku} - ${i.name}</option>`
+        ).join('');
+        if (inventory[0]) updateSalePrice();
+    }
+    if (distWh) {
+        distWh.innerHTML = warehouses.map(w =>
+            `<option value="${w.id}">${w.name}</option>`
+        ).join('');
+    }
+    if (saleWh) {
+        saleWh.innerHTML = warehouses.map(w =>
+            `<option value="${w.id}">${w.name}</option>`
+        ).join('');
+    }
+}
+
+// ==================== PEDIDOS ====================
+function showNewOrderModal() {
+    document.getElementById('orderCustomer').value = currentUser?.email || '';
+    document.getElementById('orderQuantity').value = 1;
+    document.getElementById('orderStatus').value = 'pending';
+    updateOrderProductSelect();
+    document.getElementById('orderModal').classList.add('active');
+}
+
+function updateOrderProductSelect() {
+    const el = document.getElementById('orderProduct');
+    el.innerHTML = catalogProducts.map(p =>
+        `<option value="${p.sku}">${p.name} (${p.sku})</option>`
+    ).join('');
+}
+
+function saveOrder() {
+    const customer = document.getElementById('orderCustomer').value.trim();
+    const sku = document.getElementById('orderProduct').value;
+    const quantity = parseInt(document.getElementById('orderQuantity').value) || 1;
+    const status = document.getElementById('orderStatus').value;
+    
+    if (!customer || !sku) { alert('Cliente y producto son obligatorios'); return; }
+    
+    const product = catalogProducts.find(p => p.sku === sku);
+    const order = {
+        id: 'ord_' + Date.now(),
+        customer,
+        sku,
+        productName: product?.name || sku,
+        quantity,
+        status,
+        total: (product?.price || 0) * quantity,
+        createdAt: new Date().toISOString(),
+        createdBy: currentUser?.email || 'unknown'
+    };
+    orders.unshift(order);
+    saveLocalData();
+    renderOrders();
+    closeModal('orderModal');
+    alert(`Pedido creado para ${customer}`);
+}
+
+function renderOrders() {
+    const el = document.getElementById('ordersList');
+    if (orders.length === 0) {
+        el.innerHTML = '<div class="empty-state">No hay pedidos registrados</div>';
+        return;
+    }
+    el.innerHTML = orders.map(o => `
+        <div class="order-item">
+            <div>
+                <strong>${o.productName || o.sku}</strong>
+                <div style="font-size:13px;color:var(--muted)">${o.customer} • ${o.quantity} unidades</div>
+                <div style="font-size:13px;color:var(--muted)">${new Date(o.createdAt).toLocaleDateString()}</div>
+            </div>
+            <div style="text-align:right">
+                <span class="order-status ${o.status}">${o.status}</span>
+                <div style="font-weight:700;margin-top:4px">$${fmt(o.total)}</div>
+                ${currentUserRole === 'admin' ? `<button class="btn small" onclick="updateOrderStatus('${o.id}')">Cambiar estado</button>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateOrderStatus(orderId) {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    const statuses = ['pending', 'processing', 'completed', 'cancelled'];
+    const currentIdx = statuses.indexOf(order.status);
+    const nextStatus = statuses[(currentIdx + 1) % statuses.length];
+    if (confirm(`Cambiar estado de "${order.status}" a "${nextStatus}"?`)) {
+        order.status = nextStatus;
+        saveLocalData();
+        renderOrders();
+    }
+}
+
+// ==================== VENTAS ====================
+function updateSalePrice() {
+    const sku = document.getElementById('saleProductSku').value;
+    const inv = inventory.find(i => i.sku === sku);
+    if (inv) document.getElementById('saleUnitPrice').value = inv.price;
+    updateSaleTotal();
+}
+
+function updateSaleTotal() {
+    const qty = parseFloat(document.getElementById('saleQuantity').value) || 0;
+    const price = parseFloat(document.getElementById('saleUnitPrice').value) || 0;
+    document.getElementById('saleTotal').value = `$${fmt(qty * price)}`;
+}
+
+function registerSale() {
+    const sku = document.getElementById('saleProductSku').value;
+    const quantity = parseInt(document.getElementById('saleQuantity').value);
+    const unitPrice = parseFloat(document.getElementById('saleUnitPrice').value);
+    const whId = document.getElementById('saleWarehouse').value;
+    const customer = document.getElementById('saleCustomer').value.trim() || 'cliente general';
+    
+    if (!sku || !quantity || !unitPrice || !whId) { alert('Complete todos los campos'); return; }
+    
+    const stockItem = warehouseStock.find(ws => ws.warehouseId === whId && ws.sku === sku);
+    if (!stockItem || stockItem.quantity < quantity) {
+        alert(`Stock insuficiente en el almacén seleccionado`);
+        return;
+    }
+    stockItem.quantity -= quantity;
+    const total = unitPrice * quantity;
+    const sale = {
+        id: 'sale_' + Date.now(),
+        sku,
+        quantity,
+        unitPrice,
+        total,
+        warehouseId: whId,
+        customer,
+        date: new Date().toISOString(),
+        createdBy: currentUser?.email || 'unknown'
+    };
+    sales.unshift(sale);
+    // Actualizar inventario
+    const invItem = inventory.find(i => i.sku === sku);
+    if (invItem) invItem.quantity -= quantity;
+    saveLocalData();
+    renderSalesHistory();
+    updateDashboard();
+    updateWarehouseSelects();
+    alert(`Venta registrada: ${quantity} x $${fmt(unitPrice)} = $${fmt(total)}`);
+    document.getElementById('saleQuantity').value = 1;
+    updateSaleTotal();
+}
+
+function renderSalesHistory() {
+    const el = document.getElementById('salesHistory');
+    if (sales.length === 0) {
+        el.innerHTML = '<div class="empty-state">No hay ventas registradas</div>';
+        return;
+    }
+    el.innerHTML = `<table><thead><tr><th>Fecha</th><th>SKU</th><th>Cantidad</th><th>Precio unit.</th><th>Total</th><th>Almacén</th><th>Cliente</th></tr></thead><tbody>${sales.slice(0, 50).map(s => {
+        const wh = warehouses.find(w => w.id === s.warehouseId);
+        return `<tr><td>${new Date(s.date).toLocaleDateString()}</td><td><span class="badge blue">${s.sku}</span></td><td>${s.quantity}</td><td>$${fmt(s.unitPrice)}</td><td><strong>$${fmt(s.total)}</strong></td><td>${wh?.name || '—'}</td><td>${s.customer || '—'}</td></tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+// ==================== DASHBOARD ====================
+function updateDashboard() {
+    const totalInventory = inventory.reduce((a, b) => a + b.quantity, 0);
+    const totalValue = inventory.reduce((a, b) => a + (b.price * b.quantity), 0);
+    const totalSales = sales.reduce((a, b) => a + b.total, 0);
+    const totalUnitsSold = sales.reduce((a, b) => a + b.quantity, 0);
+    const last30Days = sales.filter(s => new Date(s.date) > new Date(Date.now() - 30 * 24 * 3600000)).reduce((a, b) => a + b.total, 0);
+    const lastMonth = sales.filter(s => new Date(s.date) > new Date(Date.now() - 60 * 24 * 3600000) && new Date(s.date) <= new Date(Date.now() - 30 * 24 * 3600000)).reduce((a, b) => a + b.total, 0);
+    const growth = lastMonth > 0 ? ((last30Days - lastMonth) / lastMonth * 100) : 0;
+    
+    document.getElementById('dashboardStats').innerHTML = `
+        <div class="stat-card"><div class="stat-label">📦 Stock total</div><div class="stat-value">${totalInventory}</div><div>unidades</div></div>
+        <div class="stat-card"><div class="stat-label">💰 Valor inventario</div><div class="stat-value">$${fmt(totalValue)}</div></div>
+        <div class="stat-card"><div class="stat-label">💵 Ventas totales</div><div class="stat-value">$${fmt(totalSales)}</div></div>
+        <div class="stat-card"><div class="stat-label">📈 Unidades vendidas</div><div class="stat-value">${totalUnitsSold}</div></div>
+        <div class="stat-card"><div class="stat-label">📅 Ventas (30 días)</div><div class="stat-value">$${fmt(last30Days)}</div>
+            <div class="change ${growth >= 0 ? 'positive' : 'negative'}">${growth >= 0 ? '📈' : '📉'} ${Math.abs(growth).toFixed(1)}% vs mes anterior</div>
+        </div>
+    `;
+    
+    // Productos más vendidos
+    const productSales = {};
+    sales.forEach(s => { productSales[s.sku] = (productSales[s.sku] || 0) + s.quantity; });
+    const top = Object.entries(productSales).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    document.getElementById('topProducts').innerHTML = top.length ?
+        `<table><thead><tr><th>SKU</th><th>Unidades vendidas</th></tr></thead><tbody>${top.map(([sku, qty]) =>
+            `<tr><td><span class="badge blue">${sku}</span></td><td><strong>${qty}</strong></td></tr>`
+        ).join('')}</tbody></table>` :
+        '<div class="empty-state">Sin datos aún</div>';
+    
+    // Stock bajo
+    const lowStock = inventory.filter(i => i.quantity < 5);
+    document.getElementById('lowStockAlert').innerHTML = lowStock.length ?
+        `<table><thead><tr><th>SKU</th><th>Producto</th><th>Stock</th></tr></thead><tbody>${lowStock.map(i =>
+            `<tr><td><span class="badge red">${i.sku}</span></td><td>${i.name}</td><td class="low-stock">${i.quantity}</td></tr>`
+        ).join('')}</tbody></table>` :
+        '<div class="empty-state">✅ Todos los productos con stock suficiente</div>';
+    
+    // Resumen almacenes
+    const whSummary = warehouses.map(wh => {
+        const stock = warehouseStock.filter(ws => ws.warehouseId === wh.id).reduce((a, b) => a + b.quantity, 0);
+        return `<div class="breakdown-row"><span>🏪 ${wh.name}</span><span>${stock} unidades</span></div>`;
+    }).join('');
+    document.getElementById('warehouseSummary').innerHTML = whSummary || '<div>No hay almacenes</div>';
+    
+    // Resumen financiero
+    const totalCosts = sales.reduce((a, s) => {
+        const inv = inventory.find(i => i.sku === s.sku);
+        return a + (inv?.cost || 0) * s.quantity;
+    }, 0);
+    const grossProfit = totalSales - totalCosts;
+    document.getElementById('financialSummary').innerHTML = `
+        <div class="row2">
+            <div><div class="stat-label">💰 Ingresos totales</div><div style="font-size:24px;font-weight:700;color:var(--success)">$${fmt(totalSales)}</div></div>
+            <div><div class="stat-label">📦 Costo de ventas</div><div style="font-size:24px;font-weight:700;color:var(--warn)">$${fmt(totalCosts)}</div></div>
+            <div><div class="stat-label">📊 Ganancia bruta</div><div style="font-size:24px;font-weight:700;color:${grossProfit >= 0 ? 'var(--success)' : 'var(--danger)'}">$${fmt(grossProfit)}</div></div>
+            <div><div class="stat-label">📈 Margen bruto</div><div style="font-size:24px;font-weight:700;color:${totalSales > 0 && grossProfit / totalSales > 0.3 ? 'var(--success)' : 'var(--warn)'}">${totalSales > 0 ? (grossProfit / totalSales * 100).toFixed(1) : 0}%</div></div>
+        </div>
+    `;
+    
+    // Actualizar gráfico
+    updateSalesChart();
+}
+
+function updateSalesChart() {
+    const ctx = document.getElementById('salesChart').getContext('2d');
+    const labels = [];
+    const data = [];
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const month = d.toLocaleString('es', { month: 'short' });
+        labels.push(month);
+        const monthSales = sales.filter(s => {
+            const sd = new Date(s.date);
+            return sd.getMonth() === d.getMonth() && sd.getFullYear() === d.getFullYear();
+        }).reduce((a, b) => a + b.total, 0);
+        data.push(monthSales);
+    }
+    
+    if (salesChart) {
+        salesChart.destroy();
+    }
+    salesChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label: 'Ventas (MXN)', data, backgroundColor: 'rgba(59,130,246,0.6)', borderColor: '#3B82F6', borderWidth: 2 }] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#94A3B8' } } },
+            scales: { y: { ticks: { color: '#94A3B8' }, grid: { color: 'rgba(148,163,184,0.1)' } }, x: { ticks: { color: '#94A3B8' }, grid: { display: false } } }
+        }
+    });
+}
+
+// ==================== MANTENIMIENTO ====================
+function renderMaint() {
+    const pricePerHour = getMaintCostPerHour();
+    document.getElementById('maintHourCost').innerHTML =
+        `<div style="font-size:28px;font-weight:700;color:var(--text)">$${fmt(pricePerHour)} <span style="font-size:14px;color:var(--muted)">MXN / hora</span></div>`;
+    
+    const cats = [...new Set(MAINT_PARTS.map(p => p.cat))];
+    let html = '';
+    cats.forEach(cat => {
+        html += `<div style="font-weight:600;margin-top:8px;color:var(--muted)">${cat}</div>`;
+        MAINT_PARTS.filter(p => p.cat === cat).forEach(p => {
+            html += `<div class="breakdown-row"><span>${p.name}</span><span>$${(p.cost / p.life).toFixed(3)}/h</span></div>`;
+        });
+    });
+    document.getElementById('maintList').innerHTML = html;
+    
+    const hoursPerYear = [pv('hA1'), pv('hP1S'), pv('hP1P'), pv('hX1C'), pv('hAMS')].reduce((a, b) => a + b, 0) || 6500;
+    document.getElementById('maintBudget').innerHTML = `
+        <div class="breakdown-row"><span>Horas totales/año</span><span>${hoursPerYear.toLocaleString()} h</span></div>
+        <div class="breakdown-row total"><span>Costo mantenimiento/año</span><span>$${fmt(pricePerHour * hoursPerYear)} MXN</span></div>
+    `;
+}
+
+// ==================== MODALES ====================
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+}
+
+// ==================== INICIALIZACIÓN ====================
+function initApp() {
+    if (document.getElementById('filaments').children.length === 0) {
+        addFilament('PLA', 280, 85);
+    }
+    calc();
+    renderSKUs();
+    updateWarehouseSelects();
+    updateDashboard();
+    renderCatalog();
+    renderInventory();
+    renderWarehouses();
+    renderSalesHistory();
+    renderOrders();
+    renderMaint();
+}
+
+// ==================== RESET ====================
+function resetAllData() {
+    if (confirm('¿Resetear TODOS los datos? Esta acción es irreversible.')) {
+        localStorage.clear();
+        location.reload();
+    }
+}
+
+// ==================== CIERRE DE MODALES CON ESC ====================
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
+    }
+});
+
+// ==================== INICIO ====================
+// Verificar si hay usuario en sesión (persistencia simple)
+try {
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+        const user = JSON.parse(savedUser);
+        if (USERS[user.email] && USERS[user.email].password === user.password) {
+            currentUser = user;
+            currentUserRole = user.role;
+            enterApp();
+        }
+    }
+} catch (e) {}
+
+console.log('🖨️ 3D Print Manager Pro - Modo Local (sin Firebase)');
+console.log('🔑 Usuario predeterminado: admin@3dprint.com / admin123');
+</script>
+</body>
+</html>
